@@ -23,4 +23,7 @@ public:
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Default | IA")
 	TObjectPtr<UInputAction> IA_Look;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Default | IA")
+	TObjectPtr<UInputAction> IA_DefaultAttack;
 };

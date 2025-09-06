@@ -10,6 +10,9 @@
 #include "GameFramework/PlayerController.h"
 #include "Camera/CameraComponent.h"
 #include "Data/Input/MMInputData.h"
+#include "Components/MMStateComponent.h"
+#include "GameplayTagContainer.h"
+#include "MMGameplayTags.h"
 
 AMMCharacterPlayer::AMMCharacterPlayer()
 {
@@ -27,6 +30,8 @@ AMMCharacterPlayer::AMMCharacterPlayer()
 	CameraComp = CreateDefaultSubobject<UCameraComponent>(TEXT("Camera Comp"));
 	CameraComp->SetupAttachment(SpringArmComp);
 	CameraComp->bUsePawnControlRotation = false;
+
+	StateComp = CreateDefaultSubobject<UMMStateComponent>(TEXT("State Comp"));
 }
 
 void AMMCharacterPlayer::BeginPlay()
@@ -50,11 +55,15 @@ void AMMCharacterPlayer::SetupPlayerInputComponent(UInputComponent* PlayerInputC
 	{
 		EnhancedInputComponent->BindAction(InputData->IA_Move, ETriggerEvent::Triggered, this, &ThisClass::Move);
 		EnhancedInputComponent->BindAction(InputData->IA_Look, ETriggerEvent::Triggered, this, &ThisClass::Look);
+		EnhancedInputComponent->BindAction(InputData->IA_DefaultAttack, ETriggerEvent::Started, this, &ThisClass::Attack);
 	}
 }
 
 void AMMCharacterPlayer::Move(const FInputActionValue& Value)
 {
+	check(StateComp);
+	if (!StateComp->bIsEnableMovement()) return;
+
 	FVector2D InputValue = Value.Get<FVector2D>();
 
 	const FRotator Rotation = Controller->GetControlRotation();
@@ -67,7 +76,6 @@ void AMMCharacterPlayer::Move(const FInputActionValue& Value)
 	AddMovementInput(RightVector, InputValue.Y);
 }
 
-
 void AMMCharacterPlayer::Look(const FInputActionValue& Value)
 {
 	FVector2D InputValue = Value.Get<FVector2D>();
@@ -75,3 +83,25 @@ void AMMCharacterPlayer::Look(const FInputActionValue& Value)
 	AddControllerPitchInput(-1.f * InputValue.Y);
 	AddControllerYawInput(InputValue.X);
 }
+
+void AMMCharacterPlayer::Attack()
+{
+	check(StateComp);
+
+	StateComp->SetState(MMGameplayTags::Character_State_Attacking);
+
+	PlayAnimMontage(TestAttackMontage);
+
+	ServerRPC_Attack(TestAttackMontage);
+}
+
+void AMMCharacterPlayer::ServerRPC_Attack_Implementation(UAnimMontage* InAttackMontage)
+{
+	MulticastRPC_Attack(InAttackMontage);
+}
+
+void AMMCharacterPlayer::MulticastRPC_Attack_Implementation(UAnimMontage* InAttackMontage)
+{
+	PlayAnimMontage(InAttackMontage);
+}
+

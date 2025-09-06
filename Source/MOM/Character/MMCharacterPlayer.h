@@ -9,12 +9,18 @@
 class USpringArmComponent;
 class UCameraComponent;
 class UMMInputData;
+class UMMStateComponent;
 struct FInputActionValue;
 
 UCLASS()
 class MOM_API AMMCharacterPlayer : public AMMCharacterBase
 {
 	GENERATED_BODY()
+
+// Component
+protected:
+	UPROPERTY(VisibleAnywhere, Category = "Player | Component")
+	TObjectPtr<UMMStateComponent> StateComp;
 
 // Camera
 protected:
@@ -29,6 +35,9 @@ protected:
 	UPROPERTY(EditAnywhere, Category = "Player | Input")
 	TObjectPtr<UMMInputData> InputData;
 
+	UPROPERTY(EditAnywhere)
+	TObjectPtr<UAnimMontage> TestAttackMontage;
+
 public:
 	AMMCharacterPlayer();
 
@@ -38,7 +47,19 @@ protected:
 public:
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
 
+// Util Input
 private:
 	void Move(const FInputActionValue& Value);
 	void Look(const FInputActionValue& Value);
+
+
+// Attack Input
+private:
+	void Attack();
+
+	UFUNCTION(Server, Reliable)
+	void ServerRPC_Attack(UAnimMontage* InAttackMontage);
+
+	UFUNCTION(NetMulticast, Reliable)
+	void MulticastRPC_Attack(UAnimMontage* InAttackMontage);
 };

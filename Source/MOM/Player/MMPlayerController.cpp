@@ -67,6 +67,7 @@ void AMMPlayerController::ClientRPC_CloseCharacterSelectWidget_Implementation()
 
 bool AMMPlayerController::Server_RequesSpawnCharacter_Validate(TSubclassOf<ACharacter> SelectedCharacterClass)
 {
+	// SelectedCharacterClass != nullptr;
 	return true;
 }
 

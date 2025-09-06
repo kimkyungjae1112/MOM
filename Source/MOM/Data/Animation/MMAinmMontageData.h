@@ -4,10 +4,13 @@
 
 #include "CoreMinimal.h"
 #include "Engine/DataAsset.h"
-#include "MMCharacterClassData.generated.h"
+#include "MMAinmMontageData.generated.h"
 
+/**
+ * 
+ */
 UCLASS()
-class MOM_API UMMCharacterClassData : public UPrimaryDataAsset
+class MOM_API UMMAinmMontageData : public UPrimaryDataAsset
 {
 	GENERATED_BODY()
 	
