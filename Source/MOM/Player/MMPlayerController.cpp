@@ -1,0 +1,79 @@
+// Fill out your copyright notice in the Description page of Project Settings.
+
+
+#include "Player/MMPlayerController.h"
+#include "GameFramework/Character.h"
+#include "UI/Login/MMClassSelectorWidget.h"
+#include "Game/GameModes/MMGameMode.h"
+#include "MOM.h"
+
+AMMPlayerController::AMMPlayerController()
+{
+}
+
+void AMMPlayerController::PostInitializeComponents()
+{
+	MM_LOG(LogMMNetwork, Log, TEXT("%s"), TEXT("Begin"));
+
+	Super::PostInitializeComponents();
+
+	MM_LOG(LogMMNetwork, Log, TEXT("%s"), TEXT("End"));
+}
+
+void AMMPlayerController::PostNetInit()
+{
+	MM_LOG(LogMMNetwork, Log, TEXT("%s"), TEXT("Begin"));
+
+	Super::PostNetInit();
+
+	MM_LOG(LogMMNetwork, Log, TEXT("%s"), TEXT("End"));
+
+}
+
+void AMMPlayerController::BeginPlay()
+{
+
+	MM_LOG(LogMMNetwork, Log, TEXT("%s"), TEXT("Begin"));
+
+	Super::BeginPlay();
+
+	MM_LOG(LogMMNetwork, Log, TEXT("%s"), TEXT("End"));
+
+	FInputModeUIOnly UIOnly;
+	SetInputMode(UIOnly);
+	bShowMouseCursor = true;
+}
+
+void AMMPlayerController::ClientRPC_ShowCharacterSelectWidget_Implementation()
+{
+	ClassSelectorWidget = CreateWidget<UMMClassSelectorWidget>(this, ClassSelectorWidgetClass);
+	if (ClassSelectorWidget)
+	{
+		ClassSelectorWidget->AddToViewport();
+	}
+}
+
+void AMMPlayerController::ClientRPC_CloseCharacterSelectWidget_Implementation()
+{
+	if (ClassSelectorWidget && ClassSelectorWidget->IsInViewport())
+	{
+		ClassSelectorWidget->RemoveFromParent();
+
+		FInputModeGameOnly GameOnly;
+		SetInputMode(GameOnly);
+		bShowMouseCursor = false;
+	}
+}
+
+bool AMMPlayerController::Server_RequesSpawnCharacter_Validate(TSubclassOf<ACharacter> SelectedCharacterClass)
+{
+	return true;
+}
+
+void AMMPlayerController::Server_RequesSpawnCharacter_Implementation(TSubclassOf<ACharacter> SelectedCharacterClass)
+{
+	if (AMMGameMode* GM = Cast<AMMGameMode>(GetWorld()->GetAuthGameMode()))
+	{
+		GM->SpawnSelectedCharacter(this, SelectedCharacterClass);
+	}
+}
