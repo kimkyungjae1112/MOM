@@ -3,8 +3,11 @@
 
 #include "Game/GameModes/MMGameMode.h"
 #include "Game/State/MMGameState.h"
-#include "GameFramework/Character.h"
+#include "GameFramework/PlayerStart.h"
 #include "Player/MMPlayerController.h"
+#include "Kismet/GameplayStatics.h"
+#include "Weapon/MMWeapon.h"
+#include "Character/MMCharacterPlayer.h"
 #include "MOM.h"
 
 AMMGameMode::AMMGameMode()
@@ -69,13 +72,31 @@ void AMMGameMode::PostLogin(APlayerController* NewPlayer)
 	MM_LOG(LogMMNetwork, Log, TEXT("%s"), TEXT("End"));
 }
 
-void AMMGameMode::SpawnSelectedCharacter(AController* PlayerController, TSubclassOf<ACharacter> SelectedCharacterClass)
+void AMMGameMode::SpawnSelectedCharacter(AController* PlayerController, TSubclassOf<AMMCharacterPlayer> SelectedCharacterClass)
 {
-	if (PlayerController)
+	if (!PlayerController || !SelectedCharacterClass) return;
+
+	if (AMMPlayerController* PC = Cast<AMMPlayerController>(PlayerController))
 	{
-		if (AMMPlayerController* PC = Cast<AMMPlayerController>(PlayerController))
-		{
-			PC->ClientRPC_CloseCharacterSelectWidget();
-		}
+		PC->ClientRPC_CloseCharacterSelectWidget();
+	}
+
+	TArray<AActor*> PlayerStarts;
+	UGameplayStatics::GetAllActorsOfClass(GetWorld(), APlayerStart::StaticClass(), PlayerStarts);
+
+	FTransform SpawnTransform;
+	if (PlayerStarts.Num() > 0)
+	{
+		SpawnTransform = PlayerStarts[0]->GetActorTransform();
+	}
+
+	if (AMMCharacterPlayer* NewCharacter = GetWorld()->SpawnActor<AMMCharacterPlayer>(SelectedCharacterClass, SpawnTransform))
+	{
+		PlayerController->Possess(NewCharacter);
+
+		FActorSpawnParameters SpawnParameter;
+		SpawnParameter.Owner = NewCharacter;
+		AMMWeapon* Weapon = GetWorld()->SpawnActor<AMMWeapon>(WeaponClass, SpawnParameter);
+		Weapon->EquipItem();
 	}
 }

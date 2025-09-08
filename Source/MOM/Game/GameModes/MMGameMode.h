@@ -6,10 +6,17 @@
 #include "GameFramework/GameModeBase.h"
 #include "MMGameMode.generated.h"
 
+class AMMWeapon;
+class AMMCharacterPlayer;
+
 UCLASS()
 class MOM_API AMMGameMode : public AGameModeBase
 {
 	GENERATED_BODY()
+
+protected:
+	UPROPERTY(EditAnywhere, Category = "Weapon")
+	TSubclassOf<AMMWeapon> WeaponClass;
 	
 public:
 	AMMGameMode();
@@ -21,5 +28,5 @@ public:
 	virtual void PostLogin(APlayerController* NewPlayer) override;
 
 public:
-	void SpawnSelectedCharacter(AController* PlayerController, TSubclassOf<ACharacter> SelectedCharacterClass);
+	void SpawnSelectedCharacter(AController* PlayerController, TSubclassOf<AMMCharacterPlayer> SelectedCharacterClass);
 };

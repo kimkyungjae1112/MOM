@@ -6,6 +6,7 @@
 #include "Blueprint/UserWidget.h"
 #include "MMClassSelectorWidget.generated.h"
 
+class AMMCharacterPlayer;
 class UButton;
 
 UCLASS()
@@ -13,6 +14,16 @@ class MOM_API UMMClassSelectorWidget : public UUserWidget
 {
 	GENERATED_BODY()
 	
+protected:
+	UPROPERTY(EditAnywhere, Category = "PlayerClass")
+	TSubclassOf<AMMCharacterPlayer> WarriorPlayerClass;
+
+	UPROPERTY(EditAnywhere, Category = "PlayerClass")
+	TSubclassOf<AMMCharacterPlayer> ArcherPlayerClass;
+
+	UPROPERTY(EditAnywhere, Category = "PlayerClass")
+	TSubclassOf<AMMCharacterPlayer> WizardPlayerClass;
+
 protected:
 	UPROPERTY(meta = (BindWidget), BlueprintReadWrite)
 	TObjectPtr<UButton> WarriorButton;
@@ -31,5 +42,12 @@ protected:
 
 private:
 	UFUNCTION()
-	void OnClickButton();
+	void OnClickWarriorButton();
+
+	UFUNCTION()
+	void OnClickArcherButton();
+
+	UFUNCTION()
+	void OnClickWizardButton();
+
 };

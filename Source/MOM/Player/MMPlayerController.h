@@ -7,7 +7,7 @@
 #include "MMPlayerController.generated.h"
 
 class UMMClassSelectorWidget;
-class ACharacter;
+class AMMCharacterPlayer;
 
 UCLASS()
 class MOM_API AMMPlayerController : public APlayerController
@@ -37,6 +37,6 @@ public:
 	void ClientRPC_CloseCharacterSelectWidget();
 
 	UFUNCTION(Server, Reliable, WithValidation)
-	void Server_RequesSpawnCharacter(TSubclassOf<ACharacter> SelectedCharacterClass);
-
+	void ServerRPC_RequestSpawnCharacter(TSubclassOf<AMMCharacterPlayer> SelectedCharacterClass);
+	// AMMCharacterPlayer 바꾸자
 };

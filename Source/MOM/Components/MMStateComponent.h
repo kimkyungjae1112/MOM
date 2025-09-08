@@ -23,6 +23,9 @@ protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, ReplicatedUsing = OnRep_CurrentState, Category = "State")
 	FGameplayTag CurrentState;
 
+	/* 상태 초기화를 위한 타이머 핸들 */
+	FTimerHandle StateResetTimerHandle;
+
 public:
 	UMMStateComponent();
 
@@ -42,10 +45,14 @@ public:
 
 	/* 상태 초기화 */
 	void ClearPlayerState();
+	void ClearAIState();
 
 	/* 현재 상태가 TagsToCheck 중에 있나? */
 	bool IsCurrentStateEqualToAny(const FGameplayTagContainer& TagsToCheck) const;
 	bool IsCurrentStateEqualToIt(const FGameplayTag& TagToCheck) const;
+
+	/* 임시, 일정 타이머 이내에 상태가 초기화 되는 메서드 */
+	void SetStateAndResetAfterDelay(const FGameplayTag& NewState, float Delay);
 
 protected:
 	UFUNCTION()

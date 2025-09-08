@@ -14,7 +14,6 @@ void UMMStateComponent::BeginPlay()
 {
 	Super::BeginPlay();
 
-	
 }
 
 void UMMStateComponent::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
@@ -26,13 +25,32 @@ void UMMStateComponent::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& Ou
 
 void UMMStateComponent::SetState(const FGameplayTag& NewState)
 {
-	// Server 에서 플레이어들의 상태를 변경한다.
-	ServerRPC_SetState(NewState);
+	if (GetOwner()->HasAuthority())
+	{
+		CurrentState = NewState;
+		OnStateChanged();
+	}
+	else
+	{
+		ServerRPC_SetState(NewState); 
+	}
 }
 
 void UMMStateComponent::ClearPlayerState()
 {
-	SetState(FGameplayTag::EmptyTag);
+	if (GetOwner()->HasAuthority())
+	{
+		CurrentState = FGameplayTag::EmptyTag;
+		OnStateChanged();
+	}
+}
+
+void UMMStateComponent::ClearAIState()
+{
+	if (GetOwner()->HasAuthority())
+	{
+		CurrentState = FGameplayTag::EmptyTag;
+	}
 }
 
 bool UMMStateComponent::IsCurrentStateEqualToAny(const FGameplayTagContainer& TagsToCheck) const
@@ -43,6 +61,27 @@ bool UMMStateComponent::IsCurrentStateEqualToAny(const FGameplayTagContainer& Ta
 bool UMMStateComponent::IsCurrentStateEqualToIt(const FGameplayTag& TagToCheck) const
 {
 	return TagToCheck == CurrentState;
+}
+
+void UMMStateComponent::SetStateAndResetAfterDelay(const FGameplayTag& NewState, float Delay)
+{
+	if (GetOwner()->HasAuthority())
+	{
+		SetState(NewState);
+
+		GetWorld()->GetTimerManager().ClearTimer(StateResetTimerHandle);
+		GetWorld()->GetTimerManager().SetTimer(
+			StateResetTimerHandle,
+			this,
+			&UMMStateComponent::ClearPlayerState,
+			Delay,
+			false
+		);
+	}
+	else
+	{
+		ServerRPC_SetState(NewState);
+	}
 }
 
 void UMMStateComponent::OnRep_CurrentState()

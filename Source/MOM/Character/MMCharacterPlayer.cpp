@@ -37,11 +37,29 @@ AMMCharacterPlayer::AMMCharacterPlayer()
 void AMMCharacterPlayer::BeginPlay()
 {
 	Super::BeginPlay();
+}
 
+void AMMCharacterPlayer::PossessedBy(AController* NewController)
+{
+	Super::PossessedBy(NewController);
+
+	SetupInput();
+}
+
+void AMMCharacterPlayer::OnRep_Controller()
+{
+	Super::OnRep_Controller();
+
+	SetupInput();
+}
+
+void AMMCharacterPlayer::SetupInput() const
+{
 	if (APlayerController* PC = Cast<APlayerController>(GetController()))
 	{
 		if (UEnhancedInputLocalPlayerSubsystem* Subsystem = ULocalPlayer::GetSubsystem<UEnhancedInputLocalPlayerSubsystem>(PC->GetLocalPlayer()))
 		{
+			Subsystem->ClearAllMappings();
 			Subsystem->AddMappingContext(InputData->IMC_Default, 0);
 		}
 	}
@@ -55,7 +73,7 @@ void AMMCharacterPlayer::SetupPlayerInputComponent(UInputComponent* PlayerInputC
 	{
 		EnhancedInputComponent->BindAction(InputData->IA_Move, ETriggerEvent::Triggered, this, &ThisClass::Move);
 		EnhancedInputComponent->BindAction(InputData->IA_Look, ETriggerEvent::Triggered, this, &ThisClass::Look);
-		EnhancedInputComponent->BindAction(InputData->IA_DefaultAttack, ETriggerEvent::Started, this, &ThisClass::Attack);
+		EnhancedInputComponent->BindAction(InputData->IA_DefaultAttack, ETriggerEvent::Started, this, &ThisClass::DefaultAttack);
 	}
 }
 
@@ -84,15 +102,43 @@ void AMMCharacterPlayer::Look(const FInputActionValue& Value)
 	AddControllerYawInput(InputValue.X);
 }
 
-void AMMCharacterPlayer::Attack()
+void AMMCharacterPlayer::DefaultAttack()
 {
 	check(StateComp);
 
-	StateComp->SetState(MMGameplayTags::Character_State_Attacking);
+	StateComp->SetStateAndResetAfterDelay(MMGameplayTags::Character_State_Attacking, 1.f);
 
 	PlayAnimMontage(TestAttackMontage);
 
 	ServerRPC_Attack(TestAttackMontage);
+}
+
+FGameplayTag AMMCharacterPlayer::GetAttackPerform() const
+{
+	return FGameplayTag();
+}
+
+bool AMMCharacterPlayer::CanPerformAttack(const FGameplayTag& AttackType)
+{
+	check(StateComp);
+
+	FGameplayTagContainer Tags;
+	Tags.AddTag(MMGameplayTags::Character_State_Attacking);
+	Tags.AddTag(MMGameplayTags::Character_State_Stunned);
+
+	return StateComp->IsCurrentStateEqualToAny(Tags) == false;
+}
+
+void AMMCharacterPlayer::ExecuteComboAttack(const FGameplayTag& AttackType)
+{
+}
+
+void AMMCharacterPlayer::DoAttack(const FGameplayTag& AttackType)
+{
+}
+
+void AMMCharacterPlayer::ResetCombo()
+{
 }
 
 void AMMCharacterPlayer::ServerRPC_Attack_Implementation(UAnimMontage* InAttackMontage)

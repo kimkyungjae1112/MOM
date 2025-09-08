@@ -2,9 +2,9 @@
 
 
 #include "Player/MMPlayerController.h"
-#include "GameFramework/Character.h"
 #include "UI/Login/MMClassSelectorWidget.h"
 #include "Game/GameModes/MMGameMode.h"
+#include "Character/MMCharacterPlayer.h"
 #include "MOM.h"
 
 AMMPlayerController::AMMPlayerController()
@@ -65,13 +65,13 @@ void AMMPlayerController::ClientRPC_CloseCharacterSelectWidget_Implementation()
 	}
 }
 
-bool AMMPlayerController::Server_RequesSpawnCharacter_Validate(TSubclassOf<ACharacter> SelectedCharacterClass)
+bool AMMPlayerController::ServerRPC_RequestSpawnCharacter_Validate(TSubclassOf<AMMCharacterPlayer> SelectedCharacterClass)
 {
 	// SelectedCharacterClass != nullptr;
 	return true;
 }
 
-void AMMPlayerController::Server_RequesSpawnCharacter_Implementation(TSubclassOf<ACharacter> SelectedCharacterClass)
+void AMMPlayerController::ServerRPC_RequestSpawnCharacter_Implementation(TSubclassOf<AMMCharacterPlayer> SelectedCharacterClass)
 {
 	if (AMMGameMode* GM = Cast<AMMGameMode>(GetWorld()->GetAuthGameMode()))
 	{

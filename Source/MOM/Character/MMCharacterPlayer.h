@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "Character/MMCharacterBase.h"
+#include "GameplayTagContainer.h"
 #include "MMCharacterPlayer.generated.h"
 
 class USpringArmComponent;
@@ -41,25 +42,37 @@ protected:
 public:
 	AMMCharacterPlayer();
 
-protected:
-	virtual void BeginPlay() override;
-
 public:
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
+
+protected:
+	virtual void BeginPlay() override;
+	virtual void PossessedBy(AController* NewController) override;
+	virtual void OnRep_Controller() override;
+	void SetupInput() const;
 
 // Util Input
 private:
 	void Move(const FInputActionValue& Value);
 	void Look(const FInputActionValue& Value);
 
-
 // Attack Input
 private:
-	void Attack();
+	void DefaultAttack();
 
 	UFUNCTION(Server, Reliable)
 	void ServerRPC_Attack(UAnimMontage* InAttackMontage);
 
 	UFUNCTION(NetMulticast, Reliable)
 	void MulticastRPC_Attack(UAnimMontage* InAttackMontage);
+
+	FGameplayTag GetAttackPerform() const;
+
+	bool CanPerformAttack(const FGameplayTag& AttackType);
+
+	void ExecuteComboAttack(const FGameplayTag& AttackType);
+
+	void DoAttack(const FGameplayTag& AttackType);
+
+	void ResetCombo();
 };
