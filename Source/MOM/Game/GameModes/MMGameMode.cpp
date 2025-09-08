@@ -8,6 +8,7 @@
 #include "Kismet/GameplayStatics.h"
 #include "Weapon/MMWeapon.h"
 #include "Character/MMCharacterPlayer.h"
+#include "Components/MMCombatComponent.h"
 #include "MOM.h"
 
 AMMGameMode::AMMGameMode()
@@ -96,7 +97,13 @@ void AMMGameMode::SpawnSelectedCharacter(AController* PlayerController, TSubclas
 
 		FActorSpawnParameters SpawnParameter;
 		SpawnParameter.Owner = NewCharacter;
+
 		AMMWeapon* Weapon = GetWorld()->SpawnActor<AMMWeapon>(WeaponClass, SpawnParameter);
 		Weapon->EquipItem();
+
+		if (UMMCombatComponent* CombatComp = NewCharacter->GetComponentByClass<UMMCombatComponent>())
+		{
+			CombatComp->SetWeapon(Weapon);
+		}
 	}
 }

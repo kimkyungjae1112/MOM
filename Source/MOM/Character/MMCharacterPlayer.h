@@ -5,16 +5,20 @@
 #include "CoreMinimal.h"
 #include "Character/MMCharacterBase.h"
 #include "GameplayTagContainer.h"
+#include "Interface/MMComboWindowInterface.h"
 #include "MMCharacterPlayer.generated.h"
 
 class USpringArmComponent;
 class UCameraComponent;
 class UMMInputData;
 class UMMStateComponent;
+class UMMCombatComponent;
 struct FInputActionValue;
 
 UCLASS()
-class MOM_API AMMCharacterPlayer : public AMMCharacterBase
+class MOM_API AMMCharacterPlayer 
+	: public AMMCharacterBase
+	, public IMMComboWindowInterface
 {
 	GENERATED_BODY()
 
@@ -22,6 +26,9 @@ class MOM_API AMMCharacterPlayer : public AMMCharacterBase
 protected:
 	UPROPERTY(VisibleAnywhere, Category = "Player | Component")
 	TObjectPtr<UMMStateComponent> StateComp;
+
+	UPROPERTY(VisibleAnywhere, Category = "Player | Component")
+	TObjectPtr<UMMCombatComponent> CombatComp;
 
 // Camera
 protected:
@@ -39,11 +46,33 @@ protected:
 	UPROPERTY(EditAnywhere)
 	TObjectPtr<UAnimMontage> TestAttackMontage;
 
+// Combo
+protected:
+	UPROPERTY(Replicated)
+	bool bComboSequenceRunning;
+
+	UPROPERTY(Replicated)
+	bool bCanComboInput;
+
+	UPROPERTY(Replicated)
+	bool bSavedComboInput;
+
+	UPROPERTY(Replicated)
+	int32 ComboCounter;
+
+	FTimerHandle ComboResetTimerHandle;
+
 public:
 	AMMCharacterPlayer();
 
 public:
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
+	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
+
+	/* IMMComboWindowInterface Implement*/
+	virtual void EnableComboWindow() override;
+	virtual void DisableComboWindow() override;
+	virtual void AttackFinished(const float ComboResetDelay) override;
 
 protected:
 	virtual void BeginPlay() override;
@@ -60,12 +89,6 @@ private:
 private:
 	void DefaultAttack();
 
-	UFUNCTION(Server, Reliable)
-	void ServerRPC_Attack(UAnimMontage* InAttackMontage);
-
-	UFUNCTION(NetMulticast, Reliable)
-	void MulticastRPC_Attack(UAnimMontage* InAttackMontage);
-
 	FGameplayTag GetAttackPerform() const;
 
 	bool CanPerformAttack(const FGameplayTag& AttackType);
@@ -75,4 +98,12 @@ private:
 	void DoAttack(const FGameplayTag& AttackType);
 
 	void ResetCombo();
+
+	/** 클라이언트가 서버에게 공격을 요청하는 RPC */
+	UFUNCTION(Server, Reliable)
+	void ServerRPC_RequestAttack(const FGameplayTag& AttackType);
+
+	/** 서버가 모든 클라이언트에게 공격 애니메이션 재생을 지시하는 RPC */
+	UFUNCTION(NetMulticast, Reliable)
+	void MulticastRPC_PlayAttackMontage(UAnimMontage* PlayingMontage);
 };

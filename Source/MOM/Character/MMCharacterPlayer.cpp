@@ -11,11 +11,17 @@
 #include "Camera/CameraComponent.h"
 #include "Data/Input/MMInputData.h"
 #include "Components/MMStateComponent.h"
+#include "Components/MMCombatComponent.h"
+#include "Weapon/MMWeapon.h"
+#include "Net/UnrealNetwork.h"
+
 #include "GameplayTagContainer.h"
 #include "MMGameplayTags.h"
 
 AMMCharacterPlayer::AMMCharacterPlayer()
 {
+	bReplicates = true;
+
 	bUseControllerRotationPitch = false;
 	bUseControllerRotationRoll = false;
 	bUseControllerRotationYaw = false;
@@ -32,6 +38,7 @@ AMMCharacterPlayer::AMMCharacterPlayer()
 	CameraComp->bUsePawnControlRotation = false;
 
 	StateComp = CreateDefaultSubobject<UMMStateComponent>(TEXT("State Comp"));
+	CombatComp = CreateDefaultSubobject<UMMCombatComponent>(TEXT("Combat Comp"));
 }
 
 void AMMCharacterPlayer::BeginPlay()
@@ -77,6 +84,45 @@ void AMMCharacterPlayer::SetupPlayerInputComponent(UInputComponent* PlayerInputC
 	}
 }
 
+void AMMCharacterPlayer::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
+{
+	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+
+	DOREPLIFETIME(AMMCharacterPlayer, bComboSequenceRunning);
+	DOREPLIFETIME(AMMCharacterPlayer, bCanComboInput);
+	DOREPLIFETIME(AMMCharacterPlayer, bSavedComboInput);
+	DOREPLIFETIME(AMMCharacterPlayer, ComboCounter);
+}
+
+void AMMCharacterPlayer::EnableComboWindow()
+{
+	bCanComboInput = true;
+}
+
+void AMMCharacterPlayer::DisableComboWindow()
+{
+	check(CombatComp);
+
+	bCanComboInput = false;
+
+	if (bSavedComboInput)
+	{
+		bSavedComboInput = false;
+		ComboCounter++;
+		DoAttack(CombatComp->GetLastAttackType());
+	}
+}
+
+void AMMCharacterPlayer::AttackFinished(const float ComboResetDelay)
+{
+	check(StateComp);
+
+	StateComp->ClearPlayerState();
+
+	// ComboResetDelay 후에 콤보 시퀀스 완전 종료
+	GetWorld()->GetTimerManager().SetTimer(ComboResetTimerHandle, this, &ThisClass::ResetCombo, ComboResetDelay, false);
+}
+
 void AMMCharacterPlayer::Move(const FInputActionValue& Value)
 {
 	check(StateComp);
@@ -104,13 +150,9 @@ void AMMCharacterPlayer::Look(const FInputActionValue& Value)
 
 void AMMCharacterPlayer::DefaultAttack()
 {
-	check(StateComp);
+	FGameplayTag AttackType = MMGameplayTags::Character_Attack_Light;
 
-	StateComp->SetStateAndResetAfterDelay(MMGameplayTags::Character_State_Attacking, 1.f);
-
-	PlayAnimMontage(TestAttackMontage);
-
-	ServerRPC_Attack(TestAttackMontage);
+	ServerRPC_RequestAttack(AttackType);
 }
 
 FGameplayTag AMMCharacterPlayer::GetAttackPerform() const
@@ -122,32 +164,80 @@ bool AMMCharacterPlayer::CanPerformAttack(const FGameplayTag& AttackType)
 {
 	check(StateComp);
 
-	FGameplayTagContainer Tags;
-	Tags.AddTag(MMGameplayTags::Character_State_Attacking);
-	Tags.AddTag(MMGameplayTags::Character_State_Stunned);
+	FGameplayTagContainer MMTags;
+	MMTags.AddTag(MMGameplayTags::Character_State_Stunned);
 
-	return StateComp->IsCurrentStateEqualToAny(Tags) == false;
+	return StateComp->IsCurrentStateEqualToAny(MMTags) == false;
 }
 
 void AMMCharacterPlayer::ExecuteComboAttack(const FGameplayTag& AttackType)
 {
+	check(StateComp);
+
+	if (StateComp->GetCurrentState() != MMGameplayTags::Character_State_Attacking)
+	{
+		if (bComboSequenceRunning && bCanComboInput == false)
+		{
+			ComboCounter++;
+		}
+		else
+		{
+			ResetCombo();
+			bComboSequenceRunning = true;
+		}
+
+		DoAttack(AttackType);
+
+		GetWorld()->GetTimerManager().ClearTimer(ComboResetTimerHandle);
+	}
+	else if (bCanComboInput)
+	{
+		bSavedComboInput = true;
+	}
 }
 
 void AMMCharacterPlayer::DoAttack(const FGameplayTag& AttackType)
 {
+	check(CombatComp);
+	check(StateComp);
+
+	if (AMMWeapon* Weapon = CombatComp->GetMainWeapon())
+	{
+		StateComp->SetState(MMGameplayTags::Character_State_Attacking);
+
+		CombatComp->SetLastAttackType(AttackType);
+
+		UAnimMontage* Montage = Weapon->GetMontageForTag(AttackType, ComboCounter);
+		if (!Montage)
+		{
+			ComboCounter = 0;
+			Montage = Weapon->GetMontageForTag(AttackType, ComboCounter);
+		}
+
+		if (Montage)
+		{
+			MulticastRPC_PlayAttackMontage(Montage);
+		}
+	}
 }
 
 void AMMCharacterPlayer::ResetCombo()
 {
+	bComboSequenceRunning = false;
+	bCanComboInput = false;
+	bSavedComboInput = false;
+	ComboCounter = 0;
 }
 
-void AMMCharacterPlayer::ServerRPC_Attack_Implementation(UAnimMontage* InAttackMontage)
+void AMMCharacterPlayer::ServerRPC_RequestAttack_Implementation(const FGameplayTag& AttackType)
 {
-	MulticastRPC_Attack(InAttackMontage);
+	if (CanPerformAttack(AttackType))
+	{
+		ExecuteComboAttack(AttackType);
+	}
 }
 
-void AMMCharacterPlayer::MulticastRPC_Attack_Implementation(UAnimMontage* InAttackMontage)
+void AMMCharacterPlayer::MulticastRPC_PlayAttackMontage_Implementation(UAnimMontage* PlayingMontage)
 {
-	PlayAnimMontage(InAttackMontage);
+	PlayAnimMontage(PlayingMontage);
 }
-
